@@ -43,7 +43,7 @@ DEPLOY_SCRIPT()
 	# Grab n Go Loaner deployment script.
 
 	# Include guard to prevent this script from being imported more than once.
-	echo "Variables $1 $2 $3"
+	echo "Variables $1 $2 $3 $4 $5 $6"
     sleep 5
 
 	set -e
@@ -305,7 +305,7 @@ DEPLOY_SCRIPT2()
 	# Grab n Go Loaner deployment script.
 
 	# Include guard to prevent this script from being imported more than once.
-	echo "Variables $1 $2 $3"
+	echo "Variables $1 $2 $3 $4 $5 $6"
     sleep 5
 
 	set -e
@@ -541,30 +541,35 @@ gcloud init
 #Afterwards lets start collecting the information we need from user input used https://stackoverflow.com/questions/18544359/how-to-read-user-input-into-a-variable-in-bash
 #Will redplace {PRODID}
 #clear
-
-#echo ""
-#printf "\033c"
-if [ $1 -eq "" ]
+echo ""
+printf "\033c"
+if [ "$1" = "" ] 
 then
-	echo "workd"
+	read -p 'Enter Recorded Project ID(ex. grab-n-go-247017): ' projectID
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $projectID)
+	projectID=''$changed_val''
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/deployments/deploy.sh
 else
-	echo "nah"
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $1)
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
+	sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/deployments/deploy.sh
 fi
-
-read -p 'Enter Recorded Project ID: ' projectID
-#Replacing all the Project IDs in file 
-changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $projectID)
-projectID=''$changed_val''
-sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
-sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
-sed -i "s/{PRODID}/$projectID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/deployments/deploy.sh
 printf "\033c"
 echo ""
-read -p 'Enter Recorded Service Account Email: ' serviceAcct
-#Create the Secret File and put it into the correct folder 
-#Create the Secret File and put it into the correct folder 
-changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $serviceAcct)
-serviceAcct=''$changed_val''
+if [ "$2" == "" ]
+then
+	read -p 'Enter Recorded Service Account Email: ' serviceAcct
+	#Create the Secret File and put it into the correct folder 
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $serviceAcct)
+	serviceAcct=''$changed_val''
+else
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $2)
+	serviceAcct=''$changed_val''
+fi
+
 if [ -e ~/client-secret.json ]
 then
 	echo "Coppying over to prevent. Further creation of this files. Limiit does exists"
@@ -584,51 +589,119 @@ fi
 outputR=$?
 while [ $outputR != 0]
 do
-read -p 'Enter Recorded Service Account Email: ' serviceAcct
-if [ -e ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json ]
+
+if [ "$2" == "" ]
 then
-    echo "JSON key exists Skipping Generating key.... "
-    outputR=0;
+	read -p 'Enter Recorded Service Account Email: ' serviceAcct
+	if [ -e ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json ] || [ -e ~/client-secret.json ]
+	then
+	    echo "JSON key exists Skipping Generating key.... "
+	    outputR=0;
+	else
+	    echo "JSON key does not exists Attempting to Generate key again...."
+	    gcloud iam service-accounts keys create ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json --iam-account $serviceAcct
+	    outputR=$?
+	fi
 else
-    echo "JSON key does not exists Attempting to Generate key again...."
-    gcloud iam service-accounts keys create ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json --iam-account $serviceAcct
-    outputR=$?
+	serviceAcct="$2"
+	if [ -e ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json ] || [ -e ~/client-secret.json ]
+	then
+	    echo "JSON key exists Skipping Generating key.... "
+	    outputR=0;
+	else
+	    echo "JSON key does not exists Attempting to Generate key again...."
+	    gcloud iam service-accounts keys create ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/client-secret.json --iam-account $serviceAcct
+	    outputR=$?
+	fi
 fi
 done
 #Will replace {APP Domain in}
 
+
+
+
+
+
 printf "\033c"
 echo ""
-read -p 'Enter Domain with Chrome Enterprised Enabled(example.com): ' domainName
-sed -i "s/{APP_DOMAINS}/$domainName/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
-changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $domainName)
-domainName=''$changed_val''
+if [ "$3" == "" ]
+then
+	read -p 'Enter Domain with Chrome Enterprised Enabled(example.com): ' domainName
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $domainName)
+	domainName=''$changed_val''
+	sendAS="no-reply@"
+	sed -i "s/{APP_DOMAINS}/$domainName/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{SEA}/$sendAS$domainName/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+else
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $3)
+	domainName=''$changed_val''
+	sendAS="noreply@"
+	sed -i "s/{APP_DOMAINS}/$domainName/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{SEA}/$sendAS$domainName/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+fi
+
 printf "\033c"
  #THIS WILL REPLACE {ADMIN_EMAIL}
 echo ""
-read -p 'Enter the Super Admin Email: ' adminEmail
-sed -i "s/{ADMIN_EMAIL}/$adminEmail/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
-changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $adminEmail)
-adminEmail="${changed_val}"
-#read -p "Does this value contain leading or trailing space$adminEmail" tester
-#This will repalce {SEA} (send emails as )
-sea="no-reply@$domainName"
-sed -i "s/{SEA}/$sea/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
-#this will replace {SUPERADMINS_GROUP}technical-admins@example.com
-sag="technical-admins@$domainName"
-sed -i "s/{SUPERADMINS_GROUP}/$sag/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+
+if [ "$4" == "" ]
+then
+	read -p 'Enter the Super Admin Email: ' adminEmail
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $adminEmail)
+	adminEmail="${changed_val}"
+	sed -i "s/{ADMIN_EMAIL}/$adminEmail/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+else
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $4)
+	adminEmail="${changed_val}"
+	sed -i "s/{ADMIN_EMAIL}/$adminEmail/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+fi
+
+
+
 #THIS WILL REPLACE {OAUTH2ID}
 printf "\033c"
 sleep 1
 echo ""
-read -p 'Enter the recorded Oauth ID:  ' oauthID 
-sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
-sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
+if [ "$5" == "" ]
+then
+	read -p 'Enter the recorded Oauth ID:  ' oauthID 
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $oauthID)
+	sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
+else
+	oauthID=changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $5)
+	sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+	sed -i "s/{OAUTH2ID}/$oauthID/g" ~/gnglinuxdeployment/deployment/loaner/loaner/shared/config.ts
+fi
+
 printf "\033c"
 sleep 1
 echo ""
-read -p 'Enter the recorded Billing Account ID  ' billingID
-gcloud beta billing projects link $projectID --billing-account $billingID
+if [ "$6" == "" ]
+then
+	read -p 'Enter the recorded Billing Account ID  ' billingID
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $billingID)
+	billingID="${changed_val}"
+	gcloud beta billing projects link $projectID --billing-account $billingID
+else
+	billingID=changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $6)
+	gcloud beta billing projects link $projectID --billing-account $billingID
+fi
+
+printf "\033c"
+#this will replace {SUPERADMINS_GROUP}
+echo ""
+if [ "$7" == "" ]
+then
+	read -p 'Enter the Super Admin Group Email: ' sagrpEmail
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $sagrpEmail)
+	sagrpEmail="${changed_val}"
+	sed -i "s/{SUPERADMINS_GROUP}/$sagrpEmail/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+else
+	changed_val=$(Remove_LEAVE_AND_TRAIL_SPACE $7)
+	sagrpEmail="${changed_val}"
+	sed -i "s/{SUPERADMINS_GROUP}/$sagrpEmail/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
+fi
 #Giving initial BootStrap value true
 sed -i "s/{BOOTSTRAP}/True/g" ~/gnglinuxdeployment/deployment/loaner/loaner/web_app/constants.py
 
@@ -652,7 +725,14 @@ gcloud services enable admin.googleapis.com
 #gcloud services enable console
 gcloud services enable cloudbuild.googleapis.com
 ## COULD NOT CALL A SCRIPT WITHIN A SCRIPT AND SEND THE PERMISSIONS OVER. HAD TO CONVERT TO FUNCTIION
-DEPLOY_SCRIPT web prod $projectID
+if [ $projectID != "" ]
+then
+	DEPLOY_SCRIPT web prod $projectID
+else
+	DEPLOY_SCRIPT web prod $1
+fi
+
+
 #sudo bash deployments/deploy.sh web prod
 cd ~/loaner/loaner
 sudo npm install
@@ -731,11 +811,17 @@ rm -r ~/loaner/loaner/chrome_app/manifest.json
 cp -r ~/gnglinuxdeployment/deployment/manifest.json ~/loaner/loaner/chrome_app/manifest.json
 
 
-sed -i "s/{PROD_CHROME_KEY_PASTE}/$cOauthId/g" ~/loaner/loaner/shared/config.ts
+sed -i "s,{PROD_CHROME_KEY_PASTE},$chromePubKey,g" ~/loaner/loaner/shared/config.ts
 sed -i "s/{CHROMEOAUTH2ID}/$cOauthId/g" ~/loaner/loaner/web_app/constants.py
 cd ~/loaner/loaner
 mv ~/loaner/loaner/chrome_app/chromedist ~/loaner/loaner/chrome_app/dist
-DEPLOY_SCRIPT2 web prod $projectID
+
+if [ $projectID != "" ]
+then
+	DEPLOY_SCRIPT2 web prod $projectID
+else
+	DEPLOY_SCRIPT2 web prod $1
+fi
 
 printf "\033c"
 read -p 'Would you like to configure the IT Department contact information now? This will be information that will be displayed in a event users are having issues using the application and need help' ContactAnswer
